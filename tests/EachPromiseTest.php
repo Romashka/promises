@@ -144,6 +144,25 @@ class EachPromiseTest extends TestCase
         $this->assertFalse($promises->valid());
     }
 
+    public function testDynamicallyDecreaseConcurrency()
+    {
+        $concurrency = 2;
+        $pendingFn = function () use (&$concurrency) {
+            return max($concurrency--, 1);
+        };
+        $pending = [new Promise(), new Promise(), new Promise()];
+        $promises = new \ArrayIterator($pending);
+        $each = new EachPromise($promises, ['concurrency' => $pendingFn]);
+        $each->promise();
+
+        $pending[0]->resolve('a');
+        P\queue()->run();
+        $pending[1]->resolve('b');
+        P\queue()->run();
+
+        $this->assertTrue($promises->valid());
+    }
+
     public function testClearsReferencesWhenResolved()
     {
         $called = false;
